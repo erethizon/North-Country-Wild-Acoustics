@@ -1,0 +1,378 @@
+---
+title: "Initial analysis"
+format: html
+editor: visual
+---
+
+## Start
+
+Set things up
+
+```{r}
+rm(list = ls())
+library(tidyverse)
+library(here)
+```
+
+Pull in files
+
+```{r}
+PikeRd <- read_csv(here("Data", "A016_SD022.csv"))
+Kip <- read_csv(here("Data", "A004_SD012.csv"))
+Sandbanks_Road <- read_csv(here("Data", "A021_SD023.csv"))
+Sandbanks_River <- read_csv(here("Data", "A002_SD013.csv"))
+```
+
+Now add site names to each
+
+```{r}
+PikeRd <- PikeRd %>% mutate(
+  Site = " Kip - Pike Rd"
+)
+
+Kip <- Kip %>% mutate(
+  Site = "Kip 2"
+)
+
+Sandbanks_Road <- Sandbanks_Road %>% mutate(
+  Site = "Sandbanks"
+)
+
+Sandbanks_River <- Sandbanks_River %>% mutate(
+  Site = "Sandbanks - LR"
+)
+```
+
+Now join the all into single data frame
+
+```{r}
+DF <- rbind(Kip, PikeRd, Sandbanks_River, Sandbanks_Road)
+```
+
+Now let's pull in type based on common name
+
+```{r}
+types <- read_csv(here("Data", "species_list_complex.csv"))
+```
+
+And join
+
+```{r}
+DF <- left_join(DF, types)
+```
+
+## Dates and times
+
+Next see if we can strip the date time from the filename
+
+```{r}
+DF <- DF %>% mutate(
+  Date_time = substring(filepath, 65, 79)
+)
+```
+
+Now make into a date
+
+```{r}
+DF$Date_time<-ymd_hms(DF$Date_time, tz = "US/Eastern")
+```
+
+Now let's create some time intervals for summarizing data and comparing
+
+```{r}
+D1 <-interval(ymd("2024-04-07"), ymd("2024-04-08"), tzone = "US/Eastern")
+D2 <-interval(ymd("2024-04-08"), ymd("2024-04-09"), tzone = "US/Eastern")
+D3 <-interval(ymd("2024-04-09"), ymd("2024-04-10"), tzone = "US/Eastern")
+
+#where D = day eg. day 1, day 2, day 3
+```
+
+Now create some periods within that
+
+Our configuration recorded from 5:45 - 7:15 am, 14:00 - 16:50 pm, 19:00 - 20:00 pm and 23:00 - 23:30 pm
+
+But we'll use universal time which is 4 hours ahead:
+
+5:45 is therefore 9:45 UTC 7:15 is therefore 11:15 UTC
+
+14:00 is therefore 18:00 UTC 16:50 is therefore 20:50 UTC
+
+19:00 is therefore 23:00 UTC 20:00 is therefore 00:00 UTC
+
+23:00 is therefore 03:00 UTC 23:30 is therefore 03:30 UTC
+
+```{r}
+D1Dawn <- D1
+int_start(D1Dawn) <- ymd_hms("2024-04-07 9:45:00")
+int_end(D1Dawn) <- ymd_hms("2024-04-07 11:15:00")
+
+D1Mid <-D1
+int_start(D1Mid) <-ymd_hms("2024-04-07 18:00:00")
+int_end(D1Mid) <- ymd_hms("2024-04-07 20:50:00")
+
+D1Eve <- D1
+int_start(D1Eve) <- ymd_hms("2024-04-07 23:00:00")
+int_end(D1Eve) <- ymd_hms("2024-04-08 00:00:00")
+
+D1Night <- D1
+int_start(D1Night) <- ymd_hms("2024-04-08 03:00:00")
+int_end(D1Night) <- ymd_hms("2024-04-08 03:30:00")
+
+
+
+```
+
+Do same for days 2, 3
+
+```{r}
+D2Dawn <- D2
+int_start(D2Dawn) <- ymd_hms("2024-04-08 9:45:00")
+int_end(D2Dawn) <- ymd_hms("2024-04-08 11:15:00")
+
+D2Mid <-D2
+int_start(D2Mid) <-ymd_hms("2024-04-08 18:00:00")
+int_end(D2Mid) <- ymd_hms("2024-04-08 20:50:00")
+
+D2Eve <- D2
+int_start(D2Eve) <- ymd_hms("2024-04-08 23:00:00")
+int_end(D2Eve) <- ymd_hms("2024-04-09 00:00:00")
+
+D2Night <- D2
+int_start(D2Night) <- ymd_hms("2024-04-09 03:00:00")
+int_end(D2Night) <- ymd_hms("2024-04-09 03:30:00")
+
+
+
+```
+
+Day 3
+
+```{r}
+D3Dawn <- D3
+int_start(D3Dawn) <- ymd_hms("2024-04-09 9:45:00")
+int_end(D3Dawn) <- ymd_hms("2024-04-09 11:15:00")
+
+D3Mid <-D3
+int_start(D3Mid) <-ymd_hms("2024-04-09 18:00:00")
+int_end(D3Mid) <- ymd_hms("2024-04-09 20:50:00")
+
+D3Eve <- D3
+int_start(D3Eve) <- ymd_hms("2024-04-09 23:00:00")
+int_end(D3Eve) <- ymd_hms("2024-04-10 00:00:00")
+
+D3Night <- D3
+int_start(D3Night) <- ymd_hms("2024-04-10 03:00:00")
+int_end(D3Night) <- ymd_hms("2024-04-10 03:30:00")
+```
+
+And 5 minutes before to 5 minutes after totality each day
+
+```{r}
+D1Tot <-D1
+D2Tot <-D2
+D3Tot <-D3
+
+int_start(D1Tot) <- ymd_hms("2024-04-07 19:18:52")
+int_end(D1Tot) <- ymd_hms("2024-04-07 19:32:05")
+
+int_start(D2Tot) <- ymd_hms("2024-04-08 19:18:52")
+int_end(D2Tot) <- ymd_hms("2024-04-08 19:32:05")
+
+int_start(D3Tot) <- ymd_hms("2024-04-09 19:18:52")
+int_end(D3Tot) <- ymd_hms("2024-04-09 19:32:05")
+```
+
+### Assign to intervals
+
+Loop through rows and assign to time intervals using case_when from dplyr
+
+```{r}
+
+DF$phase <-
+  case_when(
+    DF$Date_time %within% D1Dawn | DF$Date_time %within% D2Dawn | DF$Date_time %within% D3Dawn ~ "Dawn",
+    DF$Date_time %within% D1Mid |  DF$Date_time %within% D2Mid | DF$Date_time %within% D3Mid ~ "Eclipse",
+    DF$Date_time %within% D1Eve | DF$Date_time %within% D2Eve | DF$Date_time %within% D3Eve ~ "Dusk",
+    DF$Date_time %within% D1Night | DF$Date_time %within% D2Night | DF$Date_time %within% D3Night ~ "Night"
+    
+  )
+
+#And for totality
+DF$totality <-
+  case_when(
+    DF$Date_time %within% D1Tot | DF$Date_time %within% D2Tot | DF$Date_time %within% D3Tot ~ "close",
+    .default = "not totality"
+  )
+  
+
+```
+
+Now pull just the date
+
+```{r}
+DF$Date <- date(DF$Date_time)
+```
+
+Now make phase an ordered factor
+
+```{r}
+DF$phase <- factor(DF$phase, 
+                      levels = c("Dawn", "Eclipse", "Dusk", "Night"),
+                      ordered = TRUE)
+
+```
+
+## Summarise and plot
+
+Ok - this is all working, but we should clean it up.
+
+Now let's try to get some summary statistics
+
+```{r}
+FullSummary <- DF %>% group_by(Site, Date, type, phase) %>% summarise(
+  num_species = length(unique(common_name)),
+  num_calls = length(common_name)
+)
+
+```
+
+Isolate for just during the eclipse
+
+```{r}
+head(DF, 5)
+Eclipse <- DF %>% filter(phase == "Eclipse")
+ESummary <- Eclipse %>% group_by(Site, Date, type) %>% summarise(
+  num_species = length(unique(common_name)),
+  num_calls = length(common_name)
+)
+```
+
+Set up some colors for plotting
+
+```{r}
+mycols <-c("#73869e", "#FFEEBD", "black")
+```
+
+Create a data frame with the faceting variables and some dummy data that will be overwritten
+
+```{r}
+dummy <- unique(ESummary[,c("Date","Site")])
+dummy$Date <-as.factor(dummy$Date)
+dummy$totality <- "close"
+dummy$phase <- "Dawn"
+dummy$percent_calls <- 1
+dummy$num_calls <-1
+```
+
+And set some variables as factor
+
+```{r}
+FullSummary$Date <-as.factor(FullSummary$Date)
+ESummary$Date <-as.factor(ESummary$Date)
+```
+
+```{r}
+ggplot(FullSummary, aes(phase,num_calls))+
+  geom_rect(data = subset(dummy, Date == "2024-04-08"), 
+            aes(fill = Date), 
+            xmin = -Inf,xmax = Inf,  ymin = -Inf, ymax = Inf, fill = "#846951", alpha = 0.5)+
+  geom_col(aes(color = type, fill = type), show.legend = F)+
+  labs(x = "Phase of day", y = "Number of calls detected")+
+  facet_grid(Date~Site)+
+  scale_fill_manual(values = mycols)+
+  scale_color_manual(values = mycols)+
+   theme_bw()+
+  theme(axis.title = element_text(size = 20))+
+  theme(axis.text = element_text(size = 12))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+And save
+
+```{r}
+ggsave(here("Output", "calls-by-phase-of-day.png"), device = "png", height = 4, width = 6)
+```
+
+And now let's just look at the period of time during the eclipse
+
+```{r}
+Eclipse <- DF %>% filter(phase == "Eclipse")
+ESummary <- Eclipse %>% group_by(Site, Date, type, totality) %>% summarise(
+  num_species = length(unique(common_name)),
+  num_calls = length(common_name)
+)
+ETotals <- Eclipse %>%  group_by(Site, Date, totality) %>% summarise(
+  tot_species = length(unique(common_name)),
+  tot_calls = length(common_name)
+)
+
+ESummary <- left_join(ESummary, ETotals)
+
+ESummary <- ESummary %>% mutate(
+  percent_calls = (num_calls/tot_calls)*100
+)
+```
+
+```{r}
+ggplot(ESummary, aes(totality, num_calls))+
+  geom_rect(data = subset(dummy, Date == "2024-04-08"), 
+            aes(fill = Date), 
+            xmin = -Inf,xmax = Inf,  ymin = -Inf, ymax = Inf, fill = "#846951", alpha = 0.5)+
+  geom_col(aes(color = type, fill = type), show.legend = F)+
+  labs(x = "Time relative to totality", y = "Number of calls detected")+
+  facet_grid(Date~Site)+
+  theme_bw()+
+  scale_fill_manual(values = mycols)+
+  scale_color_manual(values = mycols)+
+  theme(axis.title = element_text(size = 20))+
+  theme(axis.text = element_text(size = 12))+
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+And save
+
+```{r}
+ggsave(here("Output", "num_calls_during_totality.png"), device = "png", width = 6, height = 4)
+```
+
+```{r}
+ggplot(ESummary, aes(totality, percent_calls))+
+  geom_rect(data = subset(dummy, Date == "2024-04-08"), 
+            aes(fill = Date), 
+            xmin = -Inf,xmax = Inf,  ymin = -Inf, ymax = Inf, fill = "#846951", alpha = 0.5)+
+  geom_col(aes(color = type, fill = type), show.legend = F)+
+  labs(x = "Time relative to totality", y = "Percent of calls detected")+
+  facet_grid(Date~Site)+
+  theme_bw()+
+  scale_fill_manual(values = mycols)+
+  scale_color_manual(values = mycols)+
+  theme(axis.title = element_text(size = 20))+
+  theme(axis.text = element_text(size = 12))+
+   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+```
+
+And save
+
+```{r}
+ggsave(here("Output", "percent_of_calls_relative_to_totality.png"), device = "png", width = 6, height = 4)
+```
+
+```{r}
+
+ggplot(ESummary, aes(totality, percent_calls))+
+  geom_rect(data = subset(dummy, Date == "2024-04-08"), 
+            aes(fill = Date), 
+            xmin = -Inf,xmax = Inf,  ymin = -Inf, ymax = Inf, fill = "#846951", alpha = 0.5)+
+  geom_col(aes(color = type, fill = type), show.legend = F)+
+  labs(x = "Time relative to totality", y = "Percent of calls detected")+
+  facet_grid(Date~Site)+
+  theme_bw()+
+  scale_fill_manual(values = mycols)+
+  scale_color_manual(values = mycols)+
+  theme(axis.title = element_text(size = 24))+
+  theme(axis.text = element_text(size = 18))
+```
+
+```{r}
+ggsave(here("Data", "sampleplot.png"))
+```

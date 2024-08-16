@@ -1,0 +1,10 @@
+---
+title: "try seewave package"
+format: html
+editor: visual
+---
+
+## Experiment with audio in R
+Got a suggestion from Steve Mech during ASM to try the `seewave` package in R for acoustic analysis, so taking a peek here.
+
+
